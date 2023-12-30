@@ -1,0 +1,47 @@
+# Configuration file for analysis
+
+# give names for viruses
+virus_names:
+  NC_017083.1: rabbit CoV HKU14
+  NC_026011.1: rat CoV HKU24
+  NC_032730.1: rat CoV Lucheng-19
+  NC_039208.1: porcine CoV HKU15
+  NC_045512.2: SARS-CoV-2
+  OM451122.1: canine CoV SD-F3
+  OM451123.1: canine CoV HeB-G1
+  OM451212.1: hedgehog CoV HKU31 HeN-F3
+  OM451213.1: hedgehog CoV HKU31 HeB-MO1
+  OQ297694.1: bamboo rat CoV
+
+# filter alignments to only retain reads with at least this mapping quality
+min_mapq: 4
+
+# flags passed to `coverm` when computing read counts and coverage. Reads
+# are only counted if they meet these flags.
+coverm_flags:
+  min_read_aligned_length: 40
+  contig_end_exclusion: 100
+  min_read_percent_identity: 95
+
+# mitochondrial composition from other pipeline
+mito_composition: https://raw.githubusercontent.com/jbloom/Huanan_market_samples/main/results/aggregated_counts/mito_composition_by_sample.csv
+
+# sample metadata from other pipeline
+sample_metadata: https://raw.githubusercontent.com/jbloom/Huanan_market_samples/main/results/metadata/merged_metadata.csv
+
+# Consider only these descriptions as representing metagenomic samples:
+metagenomic_descriptions:
+  - RNA sequencing of total nucleic acids from environmental swabs for metagenomics
+
+# some options for plots
+plot_options:
+  collection_date_of_interest: "2020-01-12"  # collection date of interest in plots
+  min_total_virus_reads: 500  # only keep viruses with this many total reads across all samples
+  species_for_subset_chart:
+    # for subset chart only keep species with >= this percentage of all mitochondrial reads
+    # from that species in samples with at least this many viral reads on the collection
+    # date of interest
+    min_virus_reads: 1
+    min_species_percent: 20
+  # for log scales, show zeros as the minimum non-zero value divided by this factor
+  log_scale_axis_min_factor: 2

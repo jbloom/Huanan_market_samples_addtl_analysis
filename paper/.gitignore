@@ -1,0 +1,11 @@
+*.aux
+*.log
+*.out
+*.synctex.gz
+*.bbl
+*.blg
+paper.pdf
+track_changes*
+original_paper.*
+reviewer_response.txt
+paper_w_refs_and_nofigs.pdf
