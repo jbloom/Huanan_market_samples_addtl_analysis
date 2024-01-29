@@ -25,3 +25,8 @@ results/analysis_plots/*
 !results/viral_refgenomes
 results/viral_refgenomes/*
 !results/viral_refgenomes/coronavirus_accessions.csv 
+
+!results/canine_CoV_alignment_counts_and_coverage
+results/canine_CoV_alignment_counts_and_coverage/*
+!results/canine_CoV_alignment_counts_and_coverage/aggregated_counts_coverage.csv
+!results/canine_CoV_alignment_counts_and_coverage/canine_cov_counts.html

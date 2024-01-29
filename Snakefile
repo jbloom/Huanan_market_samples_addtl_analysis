@@ -27,7 +27,7 @@ rule all:
         "results/analysis_plots/viral_subset_species_corr.html",
         "results/analysis_plots/viral_all_species_corr.html",
         "docs",
-        "results/canine_CoV_alignment_counts_and_coverage/aggregated_counts_coverage.csv",
+        "results/canine_CoV_alignment_counts_and_coverage/canine_cov_counts.html",
 
 
 checkpoint process_metadata:
@@ -442,7 +442,7 @@ rule canine_cov_counts_and_coverage:
     params:
         **config["coverm_flags"],
     conda:
-        "environment.yml"
+        "coverm_new.yml"
     shell:
         """
         coverm contig \
@@ -451,6 +451,7 @@ rule canine_cov_counts_and_coverage:
             --min-read-aligned-length {params.min_read_aligned_length} \
             --contig-end-exclusion {params.contig_end_exclusion} \
             --min-read-percent-identity {params.min_read_percent_identity} \
+            --include-secondary \
             > {output.tsv}
         """
 
@@ -474,3 +475,19 @@ rule agg_canine_cov_counts_and_coverage:
         "environment.yml"
     script:
         "scripts/agg_canine_cov_counts_and_coverage.py"
+
+
+rule analyze_canine_cov_counts:
+    """Analyze counts for canine coronaviruses."""
+    input:
+        csv=rules.agg_canine_cov_counts_and_coverage.output.csv,
+    output:
+        chart="results/canine_CoV_alignment_counts_and_coverage/canine_cov_counts.html",
+    params:
+        accessions=config["canine_CoV_refgenomes"],
+        sample_metadata=config["sample_metadata"],
+        metagenomic_descriptions=config["metagenomic_descriptions"],
+    log:
+        notebook="results/canine_CoV_alignment_counts_and_coverage/analyze_canine_cov_counts.ipynb",
+    notebook:
+        "notebooks/analyze_canine_CoV_counts.py.ipynb"

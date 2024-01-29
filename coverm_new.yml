@@ -1,0 +1,8 @@
+name: coverm_new.yml
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+
+dependencies:
+  - coverm=0.7
