@@ -27,6 +27,7 @@ rule all:
         "results/analysis_plots/viral_subset_species_corr.html",
         "results/analysis_plots/viral_all_species_corr.html",
         "docs",
+        "temp",
 
 
 checkpoint process_metadata:
@@ -199,9 +200,9 @@ rule get_viral_refgenomes:
 rule trim_viral_genomes_polyA:
     """Trim polyA tail from viral genomes."""
     input:
-        fasta=rules.get_viral_refgenomes.output.fasta,
+        fasta="{base}_untrimmed.fa",
     output:
-        fasta="results/viral_refgenomes/viral_refgenomes_trimmed3polyA.fa",
+        fasta="{base}_trimmed3polyA.fa",
     conda:
         "environment.yml"
     script:
@@ -219,7 +220,7 @@ rule minimap2_alignments:
                 f"results/fastqs_preprocessed/{wc.accession}_R2.fq.gz",
             ]
         ),
-        ref=rules.trim_viral_genomes_polyA.output.fasta,
+        ref="results/viral_refgenomes/viral_refgenomes_trimmed3polyA.fa",
     output:
         sam=temp("results/minimap2_alignments/not_mapq_filtered/{accession}.sam"),
         unsorted_bam=temp("results/minimap2_alignments/not_mapq_filtered/{accession}.bam"),
@@ -355,3 +356,78 @@ rule build_docs:
         "environment.yml"
     script:
         "scripts/build_docs.py"
+
+# --------------------------------------------------------------------------------------
+# addition rules added after paper to re-align canine CoV reads
+# --------------------------------------------------------------------------------------
+
+rule get_canine_cov_refgenomes:
+    """Get reference genomes for the canine CoVs."""
+    params:
+        accessions=config["canine_CoV_refgenomes"],
+    output:
+        fasta="results/viral_refgenomes/canine_CoV_refgenomes_untrimmed.fa",
+    conda:
+        "environment.yml"
+    script:
+        "scripts/get_canine_cov_refgenomes.py"
+
+
+rule canine_coV_minimap2_alignments:
+    """Align FASTQs for accession to canine CoV, aligning single or paired end as depending on data."""
+    input:
+        fastqs=lambda wc: (
+            [f"results/fastqs_preprocessed/{wc.accession}.fq.gz"]
+            if len(accession_fastqs(wc)) == 1
+            else [
+                f"results/fastqs_preprocessed/{wc.accession}_R1.fq.gz",
+                f"results/fastqs_preprocessed/{wc.accession}_R2.fq.gz",
+            ]
+        ),
+        ref="results/viral_refgenomes/canine_CoV_refgenomes_trimmed3polyA.fa",
+    output:
+        sam=temp("results/canine_CoV_minimap2_alignments/{accession}.sam"),
+        unsorted_bam=temp("results/canine_CoV_minimap2_alignments/{accession}.bam"),
+        bam=protected("results/canine_CoV_minimap2_alignments/{accession}_sorted.bam"),
+    params:
+        max_secondary=len(config["canine_CoV_refgenomes"]),  # max secondary alignments to include
+    threads: 3
+    conda:
+        "environment.yml"
+    shell:
+        """
+        minimap2 \
+            -a \
+            -MD \
+            -c \
+            -eqx \
+            -t {threads} \
+            -x sr \
+            -k 15 \
+            --secondary=yes \
+            -N {params.max_secondary} \
+            --sam-hit-only \
+            {input.ref} \
+            {input.fastqs} \
+            > {output.sam}
+        samtools view \
+            -@ $(({threads} - 1)) \
+            -b \
+            -o {output.unsorted_bam} \
+            {output.sam}
+        samtools sort -@ $(({threads} - 1)) -o {output.bam} {output.unsorted_bam}
+        """
+
+rule temp:
+    input:
+        lambda wc: [
+            f"results/canine_CoV_minimap2_alignments/{accession}_sorted.bam"
+            for accession in accessions(wc)
+        ],
+    output:
+        "temp",
+    conda:
+        "environment.yml"
+    shell:
+        "echo not_implemented"
+

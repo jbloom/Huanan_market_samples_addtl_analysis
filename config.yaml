@@ -45,3 +45,12 @@ plot_options:
     min_species_percent: 20
   # for log scales, show zeros as the minimum non-zero value divided by this factor
   log_scale_axis_min_factor: 2
+
+# genomes to align canine CoV reads to to assess what is actually best reference
+# for this since the Crits-Christoph dataset specifying SD-F3 and HeB-G1 as the
+# references may not be correct
+canine_CoV_refgenomes:
+  OM451122.1: canine CoV SD-F3
+  OM451123.1: canine CoV HeB-G1
+  MT114540.1: canine CoV B447
+  MT114541.1: canine CoV B363
