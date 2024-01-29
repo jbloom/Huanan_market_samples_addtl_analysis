@@ -27,7 +27,7 @@ rule all:
         "results/analysis_plots/viral_subset_species_corr.html",
         "results/analysis_plots/viral_all_species_corr.html",
         "docs",
-        "temp",
+        "results/canine_CoV_alignment_counts_and_coverage/aggregated_counts_coverage.csv",
 
 
 checkpoint process_metadata:
@@ -373,7 +373,7 @@ rule get_canine_cov_refgenomes:
         "scripts/get_canine_cov_refgenomes.py"
 
 
-rule canine_coV_minimap2_alignments:
+rule canine_cov_minimap2_alignments:
     """Align FASTQs for accession to canine CoV, aligning single or paired end as depending on data."""
     input:
         fastqs=lambda wc: (
@@ -386,9 +386,9 @@ rule canine_coV_minimap2_alignments:
         ),
         ref="results/viral_refgenomes/canine_CoV_refgenomes_trimmed3polyA.fa",
     output:
-        sam=temp("results/canine_CoV_minimap2_alignments/{accession}.sam"),
-        unsorted_bam=temp("results/canine_CoV_minimap2_alignments/{accession}.bam"),
-        bam=protected("results/canine_CoV_minimap2_alignments/{accession}_sorted.bam"),
+        sam=temp("results/canine_CoV_minimap2_alignments/not_mapq_filtered/{accession}.sam"),
+        unsorted_bam=temp("results/canine_CoV_minimap2_alignments/not_mapq_filtered/{accession}.bam"),
+        bam=protected("results/canine_CoV_minimap2_alignments/not_mapq_filtered/{accession}_sorted.bam"),
     params:
         max_secondary=len(config["canine_CoV_refgenomes"]),  # max secondary alignments to include
     threads: 3
@@ -418,16 +418,59 @@ rule canine_coV_minimap2_alignments:
         samtools sort -@ $(({threads} - 1)) -o {output.bam} {output.unsorted_bam}
         """
 
-rule temp:
+
+rule canine_cov_mapq_filter_bam:
+    """Filter BAM for only reads above a certain mapping quality."""
     input:
-        lambda wc: [
-            f"results/canine_CoV_minimap2_alignments/{accession}_sorted.bam"
-            for accession in accessions(wc)
-        ],
+        bam=rules.canine_cov_minimap2_alignments.output.bam,
     output:
-        "temp",
+        bam="results/canine_CoV_minimap2_alignments/mapq_filtered/{accession}_sorted.bam",
+    params:
+        min_mapq=config["min_mapq"],
     conda:
         "environment.yml"
     shell:
-        "echo not_implemented"
+        "samtools view -q {params.min_mapq} -b -o {output.bam} {input.bam}"
 
+
+rule canine_cov_counts_and_coverage:
+    """Get coverage for each canine CoV."""
+    input:
+        bam="results/canine_CoV_minimap2_alignments/{filtering}/{accession}_sorted.bam",
+    output:
+        tsv="results/canine_CoV_alignment_counts_and_coverage/{filtering}/{accession}.tsv",
+    params:
+        **config["coverm_flags"],
+    conda:
+        "environment.yml"
+    shell:
+        """
+        coverm contig \
+            -b {input.bam} \
+            -m count covered_bases \
+            --min-read-aligned-length {params.min_read_aligned_length} \
+            --contig-end-exclusion {params.contig_end_exclusion} \
+            --min-read-percent-identity {params.min_read_percent_identity} \
+            > {output.tsv}
+        """
+
+
+rule agg_canine_cov_counts_and_coverage:
+    """Aggregate coverage for canine CoV."""
+    input:
+        mapq_filtered=lambda wc: [
+            f"results/canine_CoV_alignment_counts_and_coverage/mapq_filtered/{accession}.tsv"
+            for accession in accessions(wc)
+        ],
+        not_mapq_filtered=lambda wc: [
+            f"results/canine_CoV_alignment_counts_and_coverage/not_mapq_filtered/{accession}.tsv"
+            for accession in accessions(wc)
+        ],
+    output:
+        csv="results/canine_CoV_alignment_counts_and_coverage/aggregated_counts_coverage.csv",
+    params:
+        accessions=accessions,
+    conda:
+        "environment.yml"
+    script:
+        "scripts/agg_canine_cov_counts_and_coverage.py"
